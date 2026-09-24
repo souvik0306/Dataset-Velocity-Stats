@@ -1,6 +1,9 @@
 /.agents
 /.codex
 /.ruff_cache
-/__pycache__
+__pycache__/
+.pycache/
+*.py[cod]
+*$py.class
 *.png
 *.csv
