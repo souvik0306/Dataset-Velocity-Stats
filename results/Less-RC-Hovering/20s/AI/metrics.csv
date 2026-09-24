@@ -1,0 +1,91 @@
+evaluation_window,window_start_s,window_end_s,window_duration_s,metric,value,unit,sample_count,topic,fields
+ai_flight_1,45.05,65.05,20,Peak horizontal velocity,1.00160629,m/s,2395,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_1,45.05,65.05,20,RMS horizontal velocity,0.355276105,m/s,2395,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_1,45.05,65.05,20,Peak absolute X velocity,0.706431628,m/s,2395,/vrpn_client_node/AIIMU1/twist,cleaned twist.linear.x
+ai_flight_1,45.05,65.05,20,Peak absolute Y velocity,0.760309609,m/s,2395,/vrpn_client_node/AIIMU1/twist,cleaned twist.linear.y
+ai_flight_1,45.05,65.05,20,Maximum absolute pitch rate,2.74214329,rad/s,1986,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> pitch; retained header.stamp resampling; 11-point cubic Savitzky-Golay derivative
+ai_flight_1,45.05,65.05,20,P99 absolute pitch rate,1.29080019,rad/s,1986,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> pitch; retained header.stamp resampling; 11-point cubic Savitzky-Golay derivative
+ai_flight_1,45.05,65.05,20,P99 absolute yaw rate,263.004401,degrees/s,1589,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> unwrapped yaw; retained header.stamp finite-difference derivative
+ai_flight_1,45.05,65.05,20,Minimum roll angle,-4.79482462,degrees,2395,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> roll
+ai_flight_1,45.05,65.05,20,Maximum roll angle,7.6563574,degrees,2395,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> roll
+ai_flight_1,45.05,65.05,20,Peak absolute roll angle,7.6563574,degrees,2395,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> roll
+ai_flight_1,45.05,65.05,20,Minimum relative pitch angle,-7.35464257,degrees,2395,/vrpn_client_node/AIIMU1/pose,"pose.orientation quaternion -> pitch, relative to initial pitch"
+ai_flight_1,45.05,65.05,20,Maximum relative pitch angle,7.67921651,degrees,2395,/vrpn_client_node/AIIMU1/pose,"pose.orientation quaternion -> pitch, relative to initial pitch"
+ai_flight_1,45.05,65.05,20,Maximum absolute pitch angle,8.19970177,degrees,2395,/vrpn_client_node/AIIMU1/pose,abs(pitch from pose.orientation quaternion)
+ai_flight_1,45.05,65.05,20,Maximum absolute yaw excursion,8.42652067,degrees,2395,/vrpn_client_node/AIIMU1/pose,abs(unwrapped yaw - initial unwrapped yaw)
+ai_flight_1,45.05,65.05,20,Yaw range,13.3830721,degrees,2395,/vrpn_client_node/AIIMU1/pose,maximum relative unwrapped yaw - minimum relative unwrapped yaw
+ai_flight_1,45.05,65.05,20,Median horizontal velocity,0.316861393,m/s,2395,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_1,45.05,65.05,20,P95 horizontal velocity,0.557186683,m/s,2395,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_1,45.05,65.05,20,Percentage of time with horizontal velocity below 0.1 m/s,1.12734864,%,2395,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_2,37.39,57.39,20,Peak horizontal velocity,0.811656397,m/s,2398,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_2,37.39,57.39,20,RMS horizontal velocity,0.355682401,m/s,2398,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_2,37.39,57.39,20,Peak absolute X velocity,0.386898808,m/s,2398,/vrpn_client_node/AIIMU1/twist,cleaned twist.linear.x
+ai_flight_2,37.39,57.39,20,Peak absolute Y velocity,0.759243592,m/s,2398,/vrpn_client_node/AIIMU1/twist,cleaned twist.linear.y
+ai_flight_2,37.39,57.39,20,Maximum absolute pitch rate,1.59908175,rad/s,1997,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> pitch; retained header.stamp resampling; 11-point cubic Savitzky-Golay derivative
+ai_flight_2,37.39,57.39,20,P99 absolute pitch rate,0.99915965,rad/s,1997,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> pitch; retained header.stamp resampling; 11-point cubic Savitzky-Golay derivative
+ai_flight_2,37.39,57.39,20,P99 absolute yaw rate,161.946584,degrees/s,1713,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> unwrapped yaw; retained header.stamp finite-difference derivative
+ai_flight_2,37.39,57.39,20,Minimum roll angle,-4.58493891,degrees,2399,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> roll
+ai_flight_2,37.39,57.39,20,Maximum roll angle,6.80919549,degrees,2399,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> roll
+ai_flight_2,37.39,57.39,20,Peak absolute roll angle,6.80919549,degrees,2399,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> roll
+ai_flight_2,37.39,57.39,20,Minimum relative pitch angle,-4.94053688,degrees,2399,/vrpn_client_node/AIIMU1/pose,"pose.orientation quaternion -> pitch, relative to initial pitch"
+ai_flight_2,37.39,57.39,20,Maximum relative pitch angle,6.07111201,degrees,2399,/vrpn_client_node/AIIMU1/pose,"pose.orientation quaternion -> pitch, relative to initial pitch"
+ai_flight_2,37.39,57.39,20,Maximum absolute pitch angle,6.55778998,degrees,2399,/vrpn_client_node/AIIMU1/pose,abs(pitch from pose.orientation quaternion)
+ai_flight_2,37.39,57.39,20,Maximum absolute yaw excursion,4.54287506,degrees,2399,/vrpn_client_node/AIIMU1/pose,abs(unwrapped yaw - initial unwrapped yaw)
+ai_flight_2,37.39,57.39,20,Yaw range,5.75524607,degrees,2399,/vrpn_client_node/AIIMU1/pose,maximum relative unwrapped yaw - minimum relative unwrapped yaw
+ai_flight_2,37.39,57.39,20,Median horizontal velocity,0.330358655,m/s,2398,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_2,37.39,57.39,20,P95 horizontal velocity,0.578867701,m/s,2398,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_2,37.39,57.39,20,Percentage of time with horizontal velocity below 0.1 m/s,5.08757298,%,2398,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_3,36.06,56.06,20,Peak horizontal velocity,0.8774357,m/s,2398,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_3,36.06,56.06,20,RMS horizontal velocity,0.319616956,m/s,2398,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_3,36.06,56.06,20,Peak absolute X velocity,0.700290595,m/s,2398,/vrpn_client_node/AIIMU1/twist,cleaned twist.linear.x
+ai_flight_3,36.06,56.06,20,Peak absolute Y velocity,0.588482062,m/s,2398,/vrpn_client_node/AIIMU1/twist,cleaned twist.linear.y
+ai_flight_3,36.06,56.06,20,Maximum absolute pitch rate,2.76033608,rad/s,1994,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> pitch; retained header.stamp resampling; 11-point cubic Savitzky-Golay derivative
+ai_flight_3,36.06,56.06,20,P99 absolute pitch rate,1.74949544,rad/s,1994,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> pitch; retained header.stamp resampling; 11-point cubic Savitzky-Golay derivative
+ai_flight_3,36.06,56.06,20,P99 absolute yaw rate,284.715409,degrees/s,1669,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> unwrapped yaw; retained header.stamp finite-difference derivative
+ai_flight_3,36.06,56.06,20,Minimum roll angle,-4.67279179,degrees,2398,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> roll
+ai_flight_3,36.06,56.06,20,Maximum roll angle,9.67196647,degrees,2398,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> roll
+ai_flight_3,36.06,56.06,20,Peak absolute roll angle,9.67196647,degrees,2398,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> roll
+ai_flight_3,36.06,56.06,20,Minimum relative pitch angle,-8.88053159,degrees,2398,/vrpn_client_node/AIIMU1/pose,"pose.orientation quaternion -> pitch, relative to initial pitch"
+ai_flight_3,36.06,56.06,20,Maximum relative pitch angle,6.26542052,degrees,2398,/vrpn_client_node/AIIMU1/pose,"pose.orientation quaternion -> pitch, relative to initial pitch"
+ai_flight_3,36.06,56.06,20,Maximum absolute pitch angle,9.2943023,degrees,2398,/vrpn_client_node/AIIMU1/pose,abs(pitch from pose.orientation quaternion)
+ai_flight_3,36.06,56.06,20,Maximum absolute yaw excursion,5.88819979,degrees,2398,/vrpn_client_node/AIIMU1/pose,abs(unwrapped yaw - initial unwrapped yaw)
+ai_flight_3,36.06,56.06,20,Yaw range,9.13526193,degrees,2398,/vrpn_client_node/AIIMU1/pose,maximum relative unwrapped yaw - minimum relative unwrapped yaw
+ai_flight_3,36.06,56.06,20,Median horizontal velocity,0.290576098,m/s,2398,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_3,36.06,56.06,20,P95 horizontal velocity,0.507356531,m/s,2398,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_3,36.06,56.06,20,Percentage of time with horizontal velocity below 0.1 m/s,11.4678899,%,2398,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_4,37.28,57.28,20,Peak horizontal velocity,0.859654234,m/s,2400,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_4,37.28,57.28,20,RMS horizontal velocity,0.331884872,m/s,2400,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_4,37.28,57.28,20,Peak absolute X velocity,0.855895007,m/s,2400,/vrpn_client_node/AIIMU1/twist,cleaned twist.linear.x
+ai_flight_4,37.28,57.28,20,Peak absolute Y velocity,0.57327954,m/s,2400,/vrpn_client_node/AIIMU1/twist,cleaned twist.linear.y
+ai_flight_4,37.28,57.28,20,Maximum absolute pitch rate,0.896581055,rad/s,1996,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> pitch; retained header.stamp resampling; 11-point cubic Savitzky-Golay derivative
+ai_flight_4,37.28,57.28,20,P99 absolute pitch rate,0.544151687,rad/s,1996,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> pitch; retained header.stamp resampling; 11-point cubic Savitzky-Golay derivative
+ai_flight_4,37.28,57.28,20,P99 absolute yaw rate,111.79144,degrees/s,1701,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> unwrapped yaw; retained header.stamp finite-difference derivative
+ai_flight_4,37.28,57.28,20,Minimum roll angle,-4.22096049,degrees,2400,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> roll
+ai_flight_4,37.28,57.28,20,Maximum roll angle,5.31135845,degrees,2400,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> roll
+ai_flight_4,37.28,57.28,20,Peak absolute roll angle,5.31135845,degrees,2400,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> roll
+ai_flight_4,37.28,57.28,20,Minimum relative pitch angle,-2.84616242,degrees,2400,/vrpn_client_node/AIIMU1/pose,"pose.orientation quaternion -> pitch, relative to initial pitch"
+ai_flight_4,37.28,57.28,20,Maximum relative pitch angle,3.39238084,degrees,2400,/vrpn_client_node/AIIMU1/pose,"pose.orientation quaternion -> pitch, relative to initial pitch"
+ai_flight_4,37.28,57.28,20,Maximum absolute pitch angle,3.69383262,degrees,2400,/vrpn_client_node/AIIMU1/pose,abs(pitch from pose.orientation quaternion)
+ai_flight_4,37.28,57.28,20,Maximum absolute yaw excursion,4.14006699,degrees,2400,/vrpn_client_node/AIIMU1/pose,abs(unwrapped yaw - initial unwrapped yaw)
+ai_flight_4,37.28,57.28,20,Yaw range,4.70139527,degrees,2400,/vrpn_client_node/AIIMU1/pose,maximum relative unwrapped yaw - minimum relative unwrapped yaw
+ai_flight_4,37.28,57.28,20,Median horizontal velocity,0.285085486,m/s,2400,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_4,37.28,57.28,20,P95 horizontal velocity,0.585942939,m/s,2400,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_4,37.28,57.28,20,Percentage of time with horizontal velocity below 0.1 m/s,8.16666667,%,2400,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_5,34.52,54.52,20,Peak horizontal velocity,1.0359456,m/s,2395,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_5,34.52,54.52,20,RMS horizontal velocity,0.396695939,m/s,2395,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_5,34.52,54.52,20,Peak absolute X velocity,0.566772293,m/s,2395,/vrpn_client_node/AIIMU1/twist,cleaned twist.linear.x
+ai_flight_5,34.52,54.52,20,Peak absolute Y velocity,0.951939012,m/s,2395,/vrpn_client_node/AIIMU1/twist,cleaned twist.linear.y
+ai_flight_5,34.52,54.52,20,Maximum absolute pitch rate,2.59712976,rad/s,1988,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> pitch; retained header.stamp resampling; 11-point cubic Savitzky-Golay derivative
+ai_flight_5,34.52,54.52,20,P99 absolute pitch rate,1.58666672,rad/s,1988,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> pitch; retained header.stamp resampling; 11-point cubic Savitzky-Golay derivative
+ai_flight_5,34.52,54.52,20,P99 absolute yaw rate,243.401037,degrees/s,1581,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> unwrapped yaw; retained header.stamp finite-difference derivative
+ai_flight_5,34.52,54.52,20,Minimum roll angle,-4.24894129,degrees,2398,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> roll
+ai_flight_5,34.52,54.52,20,Maximum roll angle,9.5904885,degrees,2398,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> roll
+ai_flight_5,34.52,54.52,20,Peak absolute roll angle,9.5904885,degrees,2398,/vrpn_client_node/AIIMU1/pose,pose.orientation quaternion -> roll
+ai_flight_5,34.52,54.52,20,Minimum relative pitch angle,-10.2993468,degrees,2398,/vrpn_client_node/AIIMU1/pose,"pose.orientation quaternion -> pitch, relative to initial pitch"
+ai_flight_5,34.52,54.52,20,Maximum relative pitch angle,14.8997119,degrees,2398,/vrpn_client_node/AIIMU1/pose,"pose.orientation quaternion -> pitch, relative to initial pitch"
+ai_flight_5,34.52,54.52,20,Maximum absolute pitch angle,15.1678379,degrees,2398,/vrpn_client_node/AIIMU1/pose,abs(pitch from pose.orientation quaternion)
+ai_flight_5,34.52,54.52,20,Maximum absolute yaw excursion,6.28523486,degrees,2398,/vrpn_client_node/AIIMU1/pose,abs(unwrapped yaw - initial unwrapped yaw)
+ai_flight_5,34.52,54.52,20,Yaw range,11.09792,degrees,2398,/vrpn_client_node/AIIMU1/pose,maximum relative unwrapped yaw - minimum relative unwrapped yaw
+ai_flight_5,34.52,54.52,20,Median horizontal velocity,0.34659437,m/s,2395,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_5,34.52,54.52,20,P95 horizontal velocity,0.644603714,m/s,2395,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"
+ai_flight_5,34.52,54.52,20,Percentage of time with horizontal velocity below 0.1 m/s,7.72442589,%,2395,/vrpn_client_node/AIIMU1/twist,"cleaned twist.linear.x, cleaned twist.linear.y"

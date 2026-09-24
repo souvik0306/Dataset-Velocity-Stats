@@ -1,0 +1,5 @@
+flight,bag_name,window_start_s,window_end_s
+raw flight 1,flight_2026-07-01-14-11-04.bag,113.37,133.37
+raw flight 2,flight_2026-07-01-14-15-52.bag,33.27,53.27
+raw flight 3,flight_2026-07-01-14-18-56.bag,38.22,58.22
+raw flight 4,flight_2026-07-01-14-21-56.bag,36.97,56.97

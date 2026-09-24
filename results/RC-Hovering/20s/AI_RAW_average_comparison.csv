@@ -1,0 +1,19 @@
+metric,unit,AI_average,RAW_average,RAW_minus_AI
+Peak horizontal velocity,m/s,0.771744504,0.733100339,-0.0386441643
+RMS horizontal velocity,m/s,0.280566268,0.27802926,-0.002537008
+Peak absolute X velocity,m/s,0.549698305,0.473952611,-0.0757456937
+Peak absolute Y velocity,m/s,0.733084251,0.717185554,-0.015898697
+Maximum absolute pitch rate,rad/s,1.78332695,2.25003217,0.466705217
+P99 absolute pitch rate,rad/s,1.07888376,1.09225126,0.0133674947
+P99 absolute yaw rate,degrees/s,170.472988,153.758622,-16.7143657
+Minimum roll angle,degrees,-3.32361899,-2.63917179,0.684447195
+Maximum roll angle,degrees,8.00272186,7.40356651,-0.59915535
+Peak absolute roll angle,degrees,8.00272186,8.02003629,0.0173144233
+Minimum relative pitch angle,degrees,-8.21173187,-6.08455228,2.12717959
+Maximum relative pitch angle,degrees,5.85718092,4.35875102,-1.49842991
+Maximum absolute pitch angle,degrees,8.5952735,7.36060297,-1.23467053
+Maximum absolute yaw excursion,degrees,4.64972485,4.66056841,0.0108435533
+Yaw range,degrees,5.95229881,6.20243793,0.250139123
+Median horizontal velocity,m/s,0.227879173,0.20730071,-0.0205784627
+P95 horizontal velocity,m/s,0.499959106,0.48732482,-0.0126342863
+Percentage of time with horizontal velocity below 0.1 m/s,%,21.1083242,20.4865455,-0.62177875

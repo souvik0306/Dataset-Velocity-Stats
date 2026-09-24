@@ -1,0 +1,13 @@
+evaluation_window,window_start_s,window_end_s,window_duration_s,metric,value,unit,sample_count,topic,fields
+raw_flight_1,61.86,87.66,25.8,Peak horizontal velocity,4.25073882,m/s,2503,/vrpn_client_node/AIIMU1/twist,"twist.linear.x, twist.linear.y"
+raw_flight_1,61.86,87.66,25.8,Mean horizontal velocity,1.43484144,m/s,2503,/vrpn_client_node/AIIMU1/twist,"twist.linear.x, twist.linear.y"
+raw_flight_1,61.86,87.66,25.8,Peak acceleration magnitude,3.27237984,m/s^2,3843,/mavros/imu/data_raw,"linear_acceleration.x, linear_acceleration.y"
+raw_flight_1,61.86,87.66,25.8,RMS acceleration magnitude,0.640535925,m/s^2,3843,/mavros/imu/data_raw,"linear_acceleration.x, linear_acceleration.y"
+raw_flight_1,61.86,87.66,25.8,Peak angular rate magnitude,3.37325452,rad/s,3843,/mavros/imu/data_raw,"angular_velocity.x, angular_velocity.y, angular_velocity.z"
+raw_flight_1,61.86,87.66,25.8,RMS angular rate magnitude,0.900464747,rad/s,3843,/mavros/imu/data_raw,"angular_velocity.x, angular_velocity.y, angular_velocity.z"
+raw_flight_1,61.86,87.66,25.8,Minimum roll angle,-35.1306173,degrees,1197,/mavros/local_position/pose,pose.orientation quaternion -> roll
+raw_flight_1,61.86,87.66,25.8,Maximum roll angle,35.2431113,degrees,1197,/mavros/local_position/pose,pose.orientation quaternion -> roll
+raw_flight_1,61.86,87.66,25.8,Roll range,70.3737287,degrees,1197,/mavros/local_position/pose,pose.orientation quaternion -> roll
+raw_flight_1,61.86,87.66,25.8,Minimum pitch angle,-30.48741,degrees,1197,/mavros/local_position/pose,pose.orientation quaternion -> pitch
+raw_flight_1,61.86,87.66,25.8,Maximum pitch angle,33.7311821,degrees,1197,/mavros/local_position/pose,pose.orientation quaternion -> pitch
+raw_flight_1,61.86,87.66,25.8,Pitch range,64.2185922,degrees,1197,/mavros/local_position/pose,pose.orientation quaternion -> pitch
