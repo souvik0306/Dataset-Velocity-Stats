@@ -10,6 +10,8 @@ Run one script per motion group from the workspace root. Each script contains th
 | Super-High | `analyze_super_high.py` | 20 s; AI only |
 | Hover | `analyze_hover.py` | 20 s |
 | RC Hovering | `analyze_rc_hovering.py` | 20 s |
+| 2 October No-RC Hover | `analyze_2nd_oct_hover_no_rc.py` | 20 s; AI only |
+| 2 October FB | `analyze_2nd_oct_fb.py` | 20 s; AI only |
 | Yaw | `analyze_yaw.py` | 20 s |
 
 Use `--durations 20` to run only a 20-second window, `--no-plots` for CSV-only output, and `--help` for path overrides.

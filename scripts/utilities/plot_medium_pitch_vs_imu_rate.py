@@ -48,20 +48,37 @@ def plot_flight(flight_number: int, bag_path: Path, start_s: float) -> Path:
     imu_samples = []
 
     with rosbag.Bag(str(bag_path)) as bag:
-        bag_start_s = bag.get_start_time()
-        for topic, msg, bag_stamp in bag.read_messages(topics=[POSE_TOPIC, IMU_TOPIC]):
-            bag_elapsed_s = bag_stamp.to_sec() - bag_start_s
-            if not start_s <= bag_elapsed_s <= end_s:
-                continue
+        for topic, msg, _ in bag.read_messages(topics=[POSE_TOPIC, IMU_TOPIC]):
+            header_time_s = msg.header.stamp.to_sec()
+            if not math.isfinite(header_time_s) or header_time_s <= 0.0:
+                raise ValueError(
+                    f"Invalid header timestamp {header_time_s!r} on {topic} in {bag_path}"
+                )
             if topic == POSE_TOPIC:
                 q = msg.pose.orientation
                 pose_samples.append(
-                    (msg.header.stamp.to_sec(), normalize_quaternion((q.x, q.y, q.z, q.w)))
+                    (header_time_s, normalize_quaternion((q.x, q.y, q.z, q.w)))
                 )
             else:
                 w = msg.angular_velocity
-                imu_time_s = (msg.header.stamp.to_sec() or bag_stamp.to_sec()) - bag_start_s
-                imu_samples.append((imu_time_s, math.sqrt(w.x * w.x + w.y * w.y + w.z * w.z)))
+                imu_samples.append(
+                    (header_time_s, math.sqrt(w.x * w.x + w.y * w.y + w.z * w.z))
+                )
+
+    all_header_times = [time_s for time_s, _ in pose_samples]
+    all_header_times.extend(time_s for time_s, _ in imu_samples)
+    if not all_header_times:
+        raise ValueError(f"No Vicon pose or IMU messages found in {bag_path}")
+    header_start_s = min(all_header_times)
+    pose_samples = [
+        sample for sample in pose_samples
+        if start_s <= sample[0] - header_start_s <= end_s
+    ]
+    imu_samples = [
+        (time_s - header_start_s, rate)
+        for time_s, rate in imu_samples
+        if start_s <= time_s - header_start_s <= end_s
+    ]
 
     _, _, _, skipped, minimum_interval_s, pitch_samples = pitch_rate_from_pose_samples(pose_samples)
     if not pitch_samples or not imu_samples:
@@ -76,7 +93,7 @@ def plot_flight(flight_number: int, bag_path: Path, start_s: float) -> Path:
     print("Retained samples:", retained_count)
     print("Skipped samples:", skipped)
 
-    pitch_time = np.array([time_s - bag_start_s for time_s, _ in pitch_samples])
+    pitch_time = np.array([time_s - header_start_s for time_s, _ in pitch_samples])
     pitch_rate = np.array([rate for _, rate in pitch_samples])
     imu_time, imu_rate = (np.array(values) for values in zip(*imu_samples))
 
@@ -94,13 +111,13 @@ def plot_flight(flight_number: int, bag_path: Path, start_s: float) -> Path:
     )
     axis.set_ylabel("Rate (rad/s)", fontsize=22)
     axis.set_xlim(start_s - 1, end_s + 1)
-    axis.set_xlabel("Seconds since bag start (message header time)", fontsize=22)
+    axis.set_xlabel("Seconds since earliest message header timestamp", fontsize=22)
     axis.tick_params(labelsize=18)
     axis.grid(alpha=0.3)
     axis.legend(fontsize=18, loc="upper right")
     fig.suptitle(
         f"Medium AI flight {flight_number}: pitch rate vs IMU angular rate\n"
-        f"Evaluation window {start_s:.2f}–{end_s:.2f} s (bag time)",
+        f"Evaluation window {start_s:.2f}–{end_s:.2f} s (message header time)",
         fontsize=26,
     )
     fig.subplots_adjust(top=0.81, bottom=0.19, left=0.10, right=0.98)

@@ -9,7 +9,7 @@ from pathlib import Path
 from evaluation_common import run_group
 
 
-# Window starts are seconds since bag start, in sorted bag filename order.
+# Window starts are seconds since the earliest message header timestamp, in sorted bag filename order.
 DATASETS = {
     "AI": {
         "folder": "AI",

@@ -14,6 +14,9 @@ Vicon GT orientation used for roll, pitch, and yaw:
 - W: /vrpn_client_node/AIIMU1/pose/pose/orientation/w
 - Timestamp: /vrpn_client_node/AIIMU1/pose/header/stamp
 
+All evaluation windows and time-series calculations use message header timestamps.
+The earliest header timestamp from the pose and twist topics is time zero for each bag.
+
 The Vicon quaternion fields are converted to Euler roll, pitch, and yaw.
 Pitch rate is derived from retained Vicon pitch samples after rejecting burst intervals,
 resampling at the median interval, and applying an 11-point cubic Savitzky-Golay derivative.
@@ -498,8 +501,8 @@ def compute_metrics_for_time_window(
     if window_end_s <= window_start_s:
         raise ValueError(f"Invalid evaluation window for {window_key}: {window_start_s} to {window_end_s}")
 
-    velocity_samples: List[Tuple[float, float, float]] = []
-    pose_samples: List[Tuple[float, Tuple[float, float, float, float]]] = []
+    raw_velocity_samples: List[Tuple[float, float, float]] = []
+    raw_pose_samples: List[Tuple[float, Tuple[float, float, float, float]]] = []
     roll = RangeStats()
     pitch = RangeStats()
     absolute_pitch = RangeStats()
@@ -511,46 +514,62 @@ def compute_metrics_for_time_window(
 
     bag_path = bag_path.expanduser()
     with rosbag.Bag(str(bag_path), "r") as bag:
-        start_time = bag.get_start_time()
-        end_time = bag.get_end_time()
-
-        for topic, msg, stamp in bag.read_messages(topics=[TWIST_TOPIC, POSE_TOPIC]):
-            elapsed_s = stamp.to_sec() - start_time
-            if elapsed_s < window_start_s or elapsed_s > window_end_s:
-                continue
+        for topic, msg, _ in bag.read_messages(topics=[TWIST_TOPIC, POSE_TOPIC]):
+            header_time_s = msg.header.stamp.to_sec()
+            if not math.isfinite(header_time_s) or header_time_s <= 0.0:
+                raise ValueError(
+                    f"Invalid header timestamp {header_time_s!r} on {topic} in {bag_path}"
+                )
 
             if topic == TWIST_TOPIC:
                 x = msg.twist.linear.x
                 y = msg.twist.linear.y
-                velocity_samples.append((elapsed_s, x, y))
+                raw_velocity_samples.append((header_time_s, x, y))
             elif topic == POSE_TOPIC:
                 q = msg.pose.orientation
-                current_quaternion = normalize_quaternion((q.x, q.y, q.z, q.w))
-                pose_time_s = msg.header.stamp.to_sec()
-                pose_samples.append((pose_time_s, current_quaternion))
+                raw_pose_samples.append((header_time_s, (q.x, q.y, q.z, q.w)))
 
-                roll_rad, pitch_rad, yaw_rad = quaternion_to_roll_pitch_yaw_radians(
-                    *current_quaternion
-                )
-                roll.add(math.degrees(roll_rad))
+    all_header_times = [sample[0] for sample in raw_velocity_samples]
+    all_header_times.extend(sample[0] for sample in raw_pose_samples)
+    if not all_header_times:
+        raise ValueError(f"No pose or twist messages found in {bag_path}")
 
-                if initial_pitch_rad is None:
-                    initial_pitch_rad = pitch_rad
-                pitch.add(math.degrees(pitch_rad - initial_pitch_rad))
-                absolute_pitch.add(math.degrees(pitch_rad))
+    start_time = min(all_header_times)
+    end_time = max(all_header_times)
+    velocity_samples = [
+        (header_time_s - start_time, x, y)
+        for header_time_s, x, y in raw_velocity_samples
+        if window_start_s <= header_time_s - start_time <= window_end_s
+    ]
+    pose_samples = [
+        (header_time_s, normalize_quaternion(quaternion))
+        for header_time_s, quaternion in raw_pose_samples
+        if window_start_s <= header_time_s - start_time <= window_end_s
+    ]
 
-                if previous_yaw_rad is None:
-                    yaw_unwrapped_rad = yaw_rad
-                    initial_yaw_unwrapped_rad = yaw_unwrapped_rad
-                else:
-                    assert previous_yaw_unwrapped_rad is not None
-                    yaw_unwrapped_rad = unwrap_angle_radians(
-                        yaw_rad, previous_yaw_rad, previous_yaw_unwrapped_rad
-                    )
-                assert initial_yaw_unwrapped_rad is not None
-                yaw.add(math.degrees(yaw_unwrapped_rad - initial_yaw_unwrapped_rad))
-                previous_yaw_rad = yaw_rad
-                previous_yaw_unwrapped_rad = yaw_unwrapped_rad
+    for _pose_time_s, current_quaternion in pose_samples:
+        roll_rad, pitch_rad, yaw_rad = quaternion_to_roll_pitch_yaw_radians(
+            *current_quaternion
+        )
+        roll.add(math.degrees(roll_rad))
+
+        if initial_pitch_rad is None:
+            initial_pitch_rad = pitch_rad
+        pitch.add(math.degrees(pitch_rad - initial_pitch_rad))
+        absolute_pitch.add(math.degrees(pitch_rad))
+
+        if previous_yaw_rad is None:
+            yaw_unwrapped_rad = yaw_rad
+            initial_yaw_unwrapped_rad = yaw_unwrapped_rad
+        else:
+            assert previous_yaw_unwrapped_rad is not None
+            yaw_unwrapped_rad = unwrap_angle_radians(
+                yaw_rad, previous_yaw_rad, previous_yaw_unwrapped_rad
+            )
+        assert initial_yaw_unwrapped_rad is not None
+        yaw.add(math.degrees(yaw_unwrapped_rad - initial_yaw_unwrapped_rad))
+        previous_yaw_rad = yaw_rad
+        previous_yaw_unwrapped_rad = yaw_unwrapped_rad
 
     maximum_pitch_rate, p99_pitch_rate, pitch_rate_count, pitch_rate_skipped, pitch_rate_minimum_interval_s, _pitch_rate_samples = (
         pitch_rate_from_pose_samples(pose_samples)

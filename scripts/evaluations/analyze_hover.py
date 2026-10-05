@@ -10,7 +10,7 @@ from evaluation_common import run_group
 from rosbag_motion_metrics import TWIST_TOPIC
 
 
-# Window starts are seconds since bag start, in sorted bag filename order.
+# Window starts are seconds since the earliest message header timestamp, in sorted bag filename order.
 DATASETS = {
     "AI": {
         "folder": "AI",
