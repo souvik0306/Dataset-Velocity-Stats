@@ -1,11 +1,13 @@
-"""Shared helpers for the six motion-metric evaluation runners."""
+"""Shared behavior for all motion-metric evaluation runners."""
 
 from __future__ import annotations
 
+import argparse
 import csv
+import re
 import sys
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
 if str(WORKSPACE_ROOT) not in sys.path:
@@ -14,6 +16,7 @@ if str(WORKSPACE_ROOT) not in sys.path:
 from generate_motion_metric_report import metric_methodology_lines, metric_slug, plot_metric  # noqa: E402
 from rosbag_motion_metrics import (  # noqa: E402
     METRIC_DEFINITIONS,
+    TWIST_TOPIC,
     compute_metrics_for_time_window,
     flatten_metric_rows,
     plot_absolute_pitch_rate_time_series,
@@ -22,16 +25,80 @@ from rosbag_motion_metrics import (  # noqa: E402
 
 SELECTED_METRICS = (
     ("peak_horizontal_velocity_m_s", "peak_horizontal_velocity_m_s"),
+    ("median_horizontal_velocity_m_s", "median_horizontal_velocity_m_s"),
+    ("rms_horizontal_velocity_m_s", "rms_horizontal_velocity_m_s"),
+    ("p95_horizontal_velocity_m_s", "p95_horizontal_velocity_m_s"),
+    (
+        "percentage_time_horizontal_velocity_below_0_1_m_s",
+        "percentage_time_vxy_gt_below_0_1_m_s",
+    ),
     ("maximum_absolute_pitch_rate_rad_s", "max_absolute_pitch_rate_rad_s"),
     ("p99_absolute_pitch_rate_rad_s", "p99_absolute_pitch_rate_rad_s"),
     ("pitch_range_deg", "pitch_range_deg"),
     ("maximum_absolute_pitch_angle_deg", "max_absolute_pitch_deg"),
+    ("maximum_absolute_yaw_excursion_deg", "max_absolute_yaw_deg"),
+    ("yaw_range_deg", "yaw_range_deg"),
+    ("p99_absolute_yaw_rate_deg_s", "p99_absolute_yaw_rate_deg_s"),
 )
+
+EXTRA_METRIC_DEFINITIONS = (
+    {
+        "metric": "Median horizontal velocity",
+        "value_key": "median_horizontal_velocity_m_s",
+        "count_key": "velocity_sample_count",
+        "unit": "m/s",
+        "topic": TWIST_TOPIC,
+        "fields": "cleaned twist.linear.x, cleaned twist.linear.y",
+    },
+    {
+        "metric": "P95 horizontal velocity",
+        "value_key": "p95_horizontal_velocity_m_s",
+        "count_key": "velocity_sample_count",
+        "unit": "m/s",
+        "topic": TWIST_TOPIC,
+        "fields": "cleaned twist.linear.x, cleaned twist.linear.y",
+    },
+    {
+        "metric": "Percentage of time with horizontal velocity below 0.1 m/s",
+        "value_key": "percentage_time_horizontal_velocity_below_0_1_m_s",
+        "count_key": "velocity_sample_count",
+        "unit": "%",
+        "topic": TWIST_TOPIC,
+        "fields": "cleaned twist.linear.x, cleaned twist.linear.y",
+    },
+)
+
+EXTRA_METRIC_METHODS = (
+    (
+        "Median horizontal velocity",
+        "`median(sqrt(vx^2 + vy^2))`",
+        "cleaned Vicon GT twist X/Y",
+    ),
+    (
+        "P95 horizontal velocity",
+        "`P95(sqrt(vx^2 + vy^2))`",
+        "cleaned Vicon GT twist X/Y",
+    ),
+    (
+        "Percentage of time with horizontal velocity below 0.1 m/s",
+        "`100 * count(vxy < 0.1) / count(vxy)`",
+        "cleaned Vicon GT twist X/Y",
+    ),
+)
+
+ALL_METRIC_DEFINITIONS = (*METRIC_DEFINITIONS, *EXTRA_METRIC_DEFINITIONS)
 
 
 def find_flight_bags(dataset_dir: Path) -> List[Path]:
-    """Return timestamp-named flight bags in chronological filename order."""
-    return sorted(dataset_dir.glob("flight_*.bag"))
+    """Return flight bags in natural filename order."""
+
+    def natural_key(path: Path) -> List[str]:
+        return [
+            f"{int(part):020d}" if part.isdigit() else part.lower()
+            for part in re.split(r"(\d+)", path.name)
+        ]
+
+    return sorted(dataset_dir.glob("flight_*.bag"), key=natural_key)
 
 
 def validate_durations(durations: Iterable[int]) -> List[int]:
@@ -257,26 +324,15 @@ def write_report(
 
 def selected_metric_row(
     wide_row: Dict[str, object],
-    *,
-    include_yaw: bool = False,
-    extra_metrics: Sequence[tuple[str, str]] = (),
 ) -> Dict[str, object]:
     row = {"flight": str(wide_row["evaluation_window"]).replace("_", " ")}
     row.update({output_key: wide_row[source_key] for source_key, output_key in SELECTED_METRICS})
-    row.update({output_key: wide_row[source_key] for source_key, output_key in extra_metrics})
-    if include_yaw:
-        row["max_absolute_yaw_deg"] = wide_row["maximum_absolute_yaw_excursion_deg"]
-        row["yaw_range_deg"] = wide_row["yaw_range_deg"]
-        row["p99_absolute_yaw_rate_deg_s"] = wide_row["p99_absolute_yaw_rate_deg_s"]
     return row
 
 
 def write_selected_outputs(
     outputs: Sequence[Dict[str, object]],
     output_root: Path,
-    *,
-    include_yaw: bool = False,
-    extra_metrics: Sequence[tuple[str, str]] = (),
 ) -> None:
     for dataset in {str(output["dataset"]) for output in outputs}:
         combined_rows = []
@@ -284,9 +340,7 @@ def write_selected_outputs(
         for output in dataset_outputs:
             duration_s = int(output["duration_s"])
             rows = [
-                selected_metric_row(
-                    row, include_yaw=include_yaw, extra_metrics=extra_metrics
-                )
+                selected_metric_row(row)
                 for row in output["wide_rows"]
             ]
             combined_rows.extend({"duration_s": duration_s, **row} for row in rows)
@@ -328,15 +382,12 @@ def run_group(
     *,
     make_plots: bool,
     title: str,
-    make_pitch_rate_time_series: bool = False,
-    pitch_rate_time_series_title: str = "Absolute Pitch Rate",
-    include_yaw: bool = False,
-    extra_selected_metrics: Sequence[tuple[str, str]] = (),
-    extra_metric_definitions: Sequence[Dict[str, object]] = (),
-    extra_metric_methods: Sequence[Tuple[str, str, str]] = (),
 ) -> None:
     output_root.mkdir(parents=True, exist_ok=True)
-    metric_definitions = (*METRIC_DEFINITIONS, *extra_metric_definitions)
+    title_suffix = " Motion Metrics"
+    time_series_title = (
+        title[: -len(title_suffix)] if title.endswith(title_suffix) else title
+    )
     outputs = [
         analyze_dataset(
             root,
@@ -344,10 +395,10 @@ def run_group(
             dataset,
             duration_s,
             make_plots=make_plots,
-            make_pitch_rate_time_series=make_pitch_rate_time_series,
-            pitch_rate_time_series_title=pitch_rate_time_series_title,
+            make_pitch_rate_time_series=True,
+            pitch_rate_time_series_title=time_series_title,
             config=config,
-            metric_definitions=metric_definitions,
+            metric_definitions=ALL_METRIC_DEFINITIONS,
         )
         for duration_s in validate_durations(durations)
         for dataset, config in datasets.items()
@@ -356,28 +407,23 @@ def run_group(
     if not outputs:
         raise ValueError("No dataset is configured for the requested durations")
     combined_path = output_root / "all_windows_metrics.csv"
-    write_combined_csv(outputs, combined_path, metric_definitions)
-    write_selected_outputs(
-        outputs,
-        output_root,
-        include_yaw=include_yaw,
-        extra_metrics=extra_selected_metrics,
-    )
+    write_combined_csv(outputs, combined_path, ALL_METRIC_DEFINITIONS)
+    write_selected_outputs(outputs, output_root)
     report_path = write_report(
         outputs,
         output_root,
         title=title,
-        metric_definitions=metric_definitions,
-        extra_metric_methods=extra_metric_methods,
+        metric_definitions=ALL_METRIC_DEFINITIONS,
+        extra_metric_methods=EXTRA_METRIC_METHODS,
     )
     for output in outputs:
         if output["dataset"] == "RAW" and output["duration_s"] == 20:
             raw_csv = output_root / "RAW_all_metrics_20s.csv"
-            write_combined_csv([output], raw_csv, metric_definitions)
+            write_combined_csv([output], raw_csv, ALL_METRIC_DEFINITIONS)
             raw_report = output_root / "RAW_20s_metrics_report.md"
             raw_report.write_text(
                 f"# {title}: RAW 20-second metrics\n\n"
-                + "\n".join(metric_methodology_lines(extra_metric_methods))
+                + "\n".join(metric_methodology_lines(EXTRA_METRIC_METHODS))
                 + "\n[Full metrics](20s/RAW/metrics.csv)  \n"
                 + "[Selected metrics](20s/RAW/selected_metrics.csv)  \n"
                 + "[Flight-to-bag mapping](20s/RAW/flight_bag_mapping.csv)\n",
@@ -385,3 +431,78 @@ def run_group(
             )
     print(f"Wrote combined metrics: {combined_path}")
     print(f"Wrote report: {report_path}")
+
+
+def _title_from_folder(output_folder: str) -> str:
+    label = output_folder.replace("_", " ").replace("-", " ")
+    label = re.sub(r"\s+", " ", label).strip()
+    label = re.sub(r"^2nd Oct\b", "2 October", label, flags=re.IGNORECASE)
+    return f"{label} Motion Metrics"
+
+
+def _datasets_from_windows(
+    root: Path,
+    windows: Mapping[str, Sequence[Tuple[float, float]]],
+) -> Tuple[Dict[str, Dict[str, object]], Tuple[int, ...]]:
+    """Validate explicit windows and convert them to the shared runner format."""
+    datasets: Dict[str, Dict[str, object]] = {}
+    durations = set()
+
+    for dataset, dataset_windows in windows.items():
+        if not dataset_windows:
+            raise ValueError(f"{dataset} must define at least one evaluation window")
+
+        starts = []
+        for flight_number, (start_s, end_s) in enumerate(dataset_windows, start=1):
+            duration_s = float(end_s) - float(start_s)
+            rounded_duration = round(duration_s)
+            if duration_s <= 0 or abs(duration_s - rounded_duration) > 1e-9:
+                raise ValueError(
+                    f"{dataset} flight {flight_number} has invalid window "
+                    f"{start_s:g}-{end_s:g} s"
+                )
+            starts.append(float(start_s))
+            durations.add(rounded_duration)
+
+        dataset_subdir = root / dataset
+        folder = dataset if dataset_subdir.is_dir() else "."
+        datasets[dataset] = {
+            "folder": folder,
+            "window_starts_s": tuple(starts),
+        }
+
+    if len(durations) != 1:
+        raise ValueError(
+            "All configured evaluation windows must use the same duration; "
+            f"found {sorted(durations)} seconds"
+        )
+    return datasets, tuple(sorted(durations))
+
+
+def run_evaluation(
+    *,
+    data_folder: str,
+    output_folder: str,
+    windows: Mapping[str, Sequence[Tuple[float, float]]],
+) -> None:
+    """Run a consistently configured evaluation from a minimal runner script."""
+    default_root = WORKSPACE_ROOT / "data" / data_folder
+    default_output = WORKSPACE_ROOT / "results" / output_folder
+    title = _title_from_folder(output_folder)
+
+    parser = argparse.ArgumentParser(description=f"Run {title}.")
+    parser.add_argument("root", nargs="?", default=default_root)
+    parser.add_argument("-o", "--output-dir", default=default_output)
+    parser.add_argument("--no-plots", action="store_true")
+    args = parser.parse_args()
+
+    root = Path(args.root).expanduser().resolve()
+    datasets, durations = _datasets_from_windows(root, windows)
+    run_group(
+        root,
+        Path(args.output_dir).expanduser().resolve(),
+        datasets,
+        durations,
+        make_plots=not args.no_plots,
+        title=title,
+    )

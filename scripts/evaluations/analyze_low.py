@@ -1,42 +1,32 @@
 #!/usr/bin/env python3
-"""Run Low-Dynamic Motion Metrics for the configured AI and RAW flight windows."""
+"""Evaluate the configured low-dynamic flight windows."""
 
-from __future__ import annotations
-
-import argparse
-from pathlib import Path
-
-from evaluation_common import run_group
+from evaluation_common import run_evaluation
 
 
-# Window starts are seconds since the earliest message header timestamp, in sorted bag filename order.
-DATASETS = {
-    "AI": {
-        "folder": "AI",
-        "window_starts_s": (44.24, 32.99, 35.95, 41.47),
-    },
-    "RAW": {
-        "folder": "RAW",
-        "window_starts_s": (48.51, 33.29, 34.77, 39.63, 35.16),
-    },
+DATA_FOLDER = "Low-Dynamic"
+OUTPUT_FOLDER = "Low-Dynamic"
+
+WINDOWS = {
+    "AI": (
+        (44.24, 64.24),
+        (32.99, 52.99),
+        (35.95, 55.95),
+        (41.47, 61.47),
+    ),
+    "RAW": (
+        (48.51, 68.51),
+        (33.29, 53.29),
+        (34.77, 54.77),
+        (39.63, 59.63),
+        (35.16, 55.16),
+    ),
 }
-
-DEFAULT_DURATIONS_S = (20,)
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("root", nargs="?", default='data/Low-Dynamic')
-    parser.add_argument("-o", "--output-dir", default='results/Low-Dynamic')
-    parser.add_argument("--durations", nargs="+", type=int, choices=DEFAULT_DURATIONS_S,
-                        default=list(DEFAULT_DURATIONS_S), metavar="SECONDS")
-    parser.add_argument("--no-plots", action="store_true")
-    args = parser.parse_args()
-    run_group(Path(args.root).expanduser().resolve(),
-              Path(args.output_dir).expanduser().resolve(),
-              DATASETS, args.durations, make_plots=not args.no_plots,
-              title='Low-Dynamic Motion Metrics', include_yaw=False)
 
 
 if __name__ == "__main__":
-    main()
+    run_evaluation(
+        data_folder=DATA_FOLDER,
+        output_folder=OUTPUT_FOLDER,
+        windows=WINDOWS,
+    )

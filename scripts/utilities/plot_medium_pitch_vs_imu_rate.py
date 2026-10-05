@@ -20,7 +20,7 @@ WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(WORKSPACE_ROOT))
 sys.path.insert(0, str(WORKSPACE_ROOT / "scripts" / "evaluations"))
 
-from analyze_medium import DATASETS  # noqa: E402
+from analyze_medium import WINDOWS  # noqa: E402
 from rosbag_motion_metrics import (  # noqa: E402
     POSE_TOPIC,
     normalize_quaternion,
@@ -30,8 +30,8 @@ from rosbag_motion_metrics import (  # noqa: E402
 IMU_TOPIC = "/mavros/imu/data_raw"
 BAG_DIR = WORKSPACE_ROOT / "data" / "Medium" / "AI"
 OUTPUT_DIR = WORKSPACE_ROOT / "results" / "Medium" / "diagnostics"
-WINDOW_STARTS_S = DATASETS["AI"]["window_starts_s"]
-WINDOW_DURATION_S = 20
+WINDOW_STARTS_S = tuple(start_s for start_s, _ in WINDOWS["AI"])
+WINDOW_DURATION_S = WINDOWS["AI"][0][1] - WINDOWS["AI"][0][0]
 
 
 def smoothed(times: np.ndarray, values: np.ndarray, window: str = "150ms") -> np.ndarray:

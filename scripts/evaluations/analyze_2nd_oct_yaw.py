@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
-"""Evaluate the configured 2 October FB flight windows."""
+"""Evaluate the configured 2 October yaw flight windows."""
 
 from evaluation_common import run_evaluation
 
 
-DATA_FOLDER = "2nd_Oct_FB"
-OUTPUT_FOLDER = "2nd_Oct_FB"
+DATA_FOLDER = "2nd_Oct_Yaw"
+OUTPUT_FOLDER = "2nd_Oct_Yaw"
 
 WINDOWS = {
     "AI": (
-        (42.77, 62.77),
-        (34.51, 54.51),
-        (44.93, 64.93),
-        (40.11, 60.11),
+        (124.54, 144.54),
+        (44.24, 64.24),
+        (40.37, 60.37),
     ),
 }
 
