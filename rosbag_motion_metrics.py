@@ -18,9 +18,11 @@ All evaluation windows and time-series calculations use message header timestamp
 The earliest header timestamp from the pose and twist topics is time zero for each bag.
 
 The Vicon quaternion fields are converted to Euler roll, pitch, and yaw.
-Pitch rate is derived from retained Vicon pitch samples after rejecting burst intervals,
-resampling at the median interval, and applying an 11-point cubic Savitzky-Golay derivative.
-Yaw rate is derived by unwrapping retained Vicon yaw samples and taking finite differences.
+Pitch and roll rates are derived from retained Vicon pose samples after rejecting burst
+intervals, resampling at the median interval, and applying an 11-point cubic
+Savitzky-Golay derivative. Yaw rate additionally unwraps yaw and applies a centered
+200 ms median filter before the Savitzky-Golay derivative so isolated Vicon pose noise
+does not dominate the metric.
 
 Metrics:
 - peak/mean/median/RMS/P95 horizontal velocity magnitude and the percentage of
@@ -42,6 +44,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 import numpy as np
 import pandas as pd
 import rosbag
+from scipy.ndimage import median_filter
 from scipy.signal import savgol_filter
 
 
@@ -51,6 +54,7 @@ CLEANER_PATH = Path(__file__).with_name("3_vel_csv_dataset_cleaner.py")
 CLEANER_WINDOW = 9
 CLEANER_FILL = "linear"
 VELOCITY_COMPONENT_BOUNDS = (-8.0, 8.0)
+YAW_MEDIAN_FILTER_DURATION_S = 0.2
 
 METRIC_DEFINITIONS = [
     {
@@ -108,7 +112,7 @@ METRIC_DEFINITIONS = [
         "count_key": "yaw_rate_sample_count",
         "unit": "degrees/s",
         "topic": POSE_TOPIC,
-        "fields": "pose.orientation quaternion -> unwrapped yaw; retained header.stamp finite-difference derivative",
+        "fields": "pose.orientation quaternion -> unwrapped yaw; retained header.stamp resampling; centered 200 ms median filter; 11-point cubic Savitzky-Golay derivative",
     },
     {
         "metric": "Minimum roll angle",
@@ -337,27 +341,52 @@ def normalize_quaternion(
     return tuple(component / norm for component in quaternion)
 
 
-def pitch_rate_from_pose_samples(
+def euler_angle_samples_for_rate_from_pose_samples(
     samples: List[Tuple[float, Tuple[float, float, float, float]]],
-) -> Tuple[Optional[float], Optional[float], int, int, Optional[float], List[Tuple[float, float]]]:
-    """Return maximum and P99 absolute pitch rate using the Vicon SG derivative."""
+    angle_index: int,
+) -> Tuple[List[Tuple[float, float]], int, Optional[float], Optional[float]]:
+    """Return the uniformly resampled Euler angles supplied to the SG derivative."""
+    if angle_index not in (0, 1, 2):
+        raise ValueError(f"Euler angle index must be 0, 1, or 2, got {angle_index}")
+
     retained, skipped, minimum_interval_s = retain_pose_samples(samples)
     if len(retained) < 3:
-        return None, None, 0, skipped, minimum_interval_s, []
+        return [], skipped, minimum_interval_s, None
 
     times = np.array([time_s for time_s, _ in retained])
-    pitches = np.array([
-        quaternion_to_roll_pitch_yaw_radians(*quaternion)[1]
+    angles = np.array([
+        quaternion_to_roll_pitch_yaw_radians(*quaternion)[angle_index]
         for _, quaternion in retained
     ])
     dt = float(np.median(np.diff(times)))
     uniform_times = times[0] + np.arange(int((times[-1] - times[0]) / dt) + 1) * dt
-    uniform_pitch = np.interp(uniform_times, times, pitches)
+    uniform_angles = np.interp(uniform_times, times, angles)
+    return (
+        list(zip(uniform_times.tolist(), uniform_angles.tolist())),
+        skipped,
+        minimum_interval_s,
+        dt,
+    )
+
+
+def _absolute_euler_rate_from_pose_samples(
+    samples: List[Tuple[float, Tuple[float, float, float, float]]],
+    angle_index: int,
+) -> Tuple[Optional[float], Optional[float], int, int, Optional[float], List[Tuple[float, float]]]:
+    """Return absolute Euler-angle rate statistics using header-timestamp samples."""
+    angle_samples, skipped, minimum_interval_s, dt = (
+        euler_angle_samples_for_rate_from_pose_samples(samples, angle_index)
+    )
+    if len(angle_samples) < 3 or dt is None:
+        return None, None, 0, skipped, minimum_interval_s, []
+
+    uniform_times = np.array([time_s for time_s, _ in angle_samples])
+    uniform_angles = np.array([angle for _, angle in angle_samples])
 
     window_length = min(11, len(uniform_times) if len(uniform_times) % 2 else len(uniform_times) - 1)
     polyorder = min(3, window_length - 1)
     absolute_rates = np.abs(savgol_filter(
-        uniform_pitch,
+        uniform_angles,
         window_length=window_length,
         polyorder=polyorder,
         deriv=1,
@@ -373,6 +402,20 @@ def pitch_rate_from_pose_samples(
         minimum_interval_s,
         rate_samples,
     )
+
+
+def pitch_rate_from_pose_samples(
+    samples: List[Tuple[float, Tuple[float, float, float, float]]],
+) -> Tuple[Optional[float], Optional[float], int, int, Optional[float], List[Tuple[float, float]]]:
+    """Return maximum and P99 absolute pitch rate using the Vicon SG derivative."""
+    return _absolute_euler_rate_from_pose_samples(samples, angle_index=1)
+
+
+def roll_rate_from_pose_samples(
+    samples: List[Tuple[float, Tuple[float, float, float, float]]],
+) -> Tuple[Optional[float], Optional[float], int, int, Optional[float], List[Tuple[float, float]]]:
+    """Return maximum and P99 absolute roll rate using the same Vicon SG derivative."""
+    return _absolute_euler_rate_from_pose_samples(samples, angle_index=0)
 
 
 def plot_absolute_pitch_rate_time_series(
@@ -460,21 +503,95 @@ def retain_pose_samples(
     return retained, skipped, minimum_interval_s
 
 
+def yaw_rate_from_pose_samples(
+    samples: List[Tuple[float, Tuple[float, float, float, float]]],
+) -> Tuple[
+    Optional[float],
+    int,
+    int,
+    Optional[float],
+    int,
+    List[Tuple[float, float]],
+    List[Tuple[float, float]],
+]:
+    """Return robust signed yaw-rate samples and P99 absolute yaw rate.
+
+    Yaw is unwrapped before resampling and filtering. A time-based median filter
+    rejects impulsive Vicon angle noise, and the derivative is calculated with
+    the same 11-point cubic Savitzky-Golay method used for pitch and roll.
+    """
+    retained, skipped, minimum_interval_s = retain_pose_samples(samples)
+    if len(retained) < 3:
+        return None, 0, skipped, minimum_interval_s, 0, [], []
+
+    times = np.array([time_s for time_s, _ in retained])
+    unwrapped_yaw_rad = np.unwrap(
+        np.array(
+            [
+                quaternion_to_roll_pitch_yaw_radians(*quaternion)[2]
+                for _, quaternion in retained
+            ]
+        )
+    )
+    dt = float(np.median(np.diff(times)))
+    uniform_times = times[0] + np.arange(int((times[-1] - times[0]) / dt) + 1) * dt
+    uniform_yaw_rad = np.interp(uniform_times, times, unwrapped_yaw_rad)
+
+    median_window_length = max(
+        3, int(round(YAW_MEDIAN_FILTER_DURATION_S / dt))
+    )
+    if median_window_length % 2 == 0:
+        median_window_length += 1
+    if median_window_length > len(uniform_yaw_rad):
+        median_window_length = (
+            len(uniform_yaw_rad)
+            if len(uniform_yaw_rad) % 2
+            else len(uniform_yaw_rad) - 1
+        )
+    filtered_yaw_rad = median_filter(
+        uniform_yaw_rad, size=median_window_length, mode="nearest"
+    )
+
+    savgol_window_length = min(
+        11,
+        len(uniform_times)
+        if len(uniform_times) % 2
+        else len(uniform_times) - 1,
+    )
+    polyorder = min(3, savgol_window_length - 1)
+    signed_yaw_rate_deg_s = np.degrees(
+        savgol_filter(
+            filtered_yaw_rad,
+            window_length=savgol_window_length,
+            polyorder=polyorder,
+            deriv=1,
+            delta=dt,
+            mode="interp",
+        )
+    )
+    rate_samples = list(
+        zip(uniform_times.tolist(), signed_yaw_rate_deg_s.tolist())
+    )
+    filtered_angle_samples = list(
+        zip(uniform_times.tolist(), filtered_yaw_rad.tolist())
+    )
+    return (
+        float(np.percentile(np.abs(signed_yaw_rate_deg_s), 99)),
+        len(signed_yaw_rate_deg_s),
+        skipped,
+        minimum_interval_s,
+        median_window_length,
+        rate_samples,
+        filtered_angle_samples,
+    )
+
+
 def p99_absolute_yaw_rate_from_pose_samples(
     samples: List[Tuple[float, Tuple[float, float, float, float]]],
 ) -> Tuple[Optional[float], int]:
-    """Return P99 absolute finite-difference yaw rate and its sample count."""
-    retained, _, _ = retain_pose_samples(samples)
-    if len(retained) < 2:
-        return None, 0
-
-    times = np.array([time_s for time_s, _ in retained])
-    yaw_rad = np.array([
-        quaternion_to_roll_pitch_yaw_radians(*quaternion)[2]
-        for _, quaternion in retained
-    ])
-    yaw_rate_deg_s = np.degrees(np.diff(np.unwrap(yaw_rad)) / np.diff(times))
-    return float(np.percentile(np.abs(yaw_rate_deg_s), 99)), len(yaw_rate_deg_s)
+    """Return filtered P99 absolute yaw rate and its sample count."""
+    p99, count, _, _, _, _, _ = yaw_rate_from_pose_samples(samples)
+    return p99, count
 
 
 def unwrap_angle_radians(current: float, previous: float, previous_unwrapped: float) -> float:
@@ -574,8 +691,25 @@ def compute_metrics_for_time_window(
     maximum_pitch_rate, p99_pitch_rate, pitch_rate_count, pitch_rate_skipped, pitch_rate_minimum_interval_s, _pitch_rate_samples = (
         pitch_rate_from_pose_samples(pose_samples)
     )
-    p99_absolute_yaw_rate_deg_s, yaw_rate_sample_count = (
-        p99_absolute_yaw_rate_from_pose_samples(pose_samples)
+    maximum_roll_rate, p99_roll_rate, roll_rate_count, roll_rate_skipped, roll_rate_minimum_interval_s, _roll_rate_samples = (
+        roll_rate_from_pose_samples(pose_samples)
+    )
+    _pitch_angle_samples_for_rate, _, _, _ = (
+        euler_angle_samples_for_rate_from_pose_samples(pose_samples, angle_index=1)
+    )
+    _roll_angle_samples_for_rate, _, _, _ = (
+        euler_angle_samples_for_rate_from_pose_samples(pose_samples, angle_index=0)
+    )
+    (
+        p99_absolute_yaw_rate_deg_s,
+        yaw_rate_sample_count,
+        yaw_rate_skipped,
+        yaw_rate_minimum_interval_s,
+        yaw_rate_median_filter_window_samples,
+        _yaw_rate_samples,
+        _yaw_angle_samples_for_rate,
+    ) = (
+        yaw_rate_from_pose_samples(pose_samples)
     )
 
     cleaned_velocity, velocity_pruned_counts, velocity_filtered_counts = clean_xy_samples(
@@ -622,8 +756,21 @@ def compute_metrics_for_time_window(
         "maximum_absolute_pitch_rate_rad_s": maximum_pitch_rate,
         "p99_absolute_pitch_rate_rad_s": p99_pitch_rate,
         "_pitch_rate_samples": _pitch_rate_samples,
+        "_pitch_angle_samples_for_rate": _pitch_angle_samples_for_rate,
+        "roll_rate_sample_count": roll_rate_count,
+        "roll_rate_skipped_pose_sample_count": roll_rate_skipped,
+        "roll_rate_minimum_interval_s": roll_rate_minimum_interval_s,
+        "maximum_absolute_roll_rate_rad_s": maximum_roll_rate,
+        "p99_absolute_roll_rate_rad_s": p99_roll_rate,
+        "_roll_rate_samples": _roll_rate_samples,
+        "_roll_angle_samples_for_rate": _roll_angle_samples_for_rate,
         "yaw_rate_sample_count": yaw_rate_sample_count,
+        "yaw_rate_skipped_pose_sample_count": yaw_rate_skipped,
+        "yaw_rate_minimum_interval_s": yaw_rate_minimum_interval_s,
+        "yaw_rate_median_filter_window_samples": yaw_rate_median_filter_window_samples,
         "p99_absolute_yaw_rate_deg_s": p99_absolute_yaw_rate_deg_s,
+        "_yaw_rate_samples": _yaw_rate_samples,
+        "_yaw_angle_samples_for_rate": _yaw_angle_samples_for_rate,
         
         "pose_sample_count": roll.count,
         "minimum_roll_deg": roll.minimum,

@@ -43,6 +43,11 @@ METRIC_METHODS = (
         "`P99(abs(SG_derivative(pitch_uniform, 11, 3)))`",
         ORIENTATION_RATE_SOURCE,
     ),
+    (
+        "P99 absolute yaw rate",
+        "`P99(abs(SG_derivative(median_200ms(unwrap(yaw_uniform)), 11, 3)))`",
+        ORIENTATION_RATE_SOURCE,
+    ),
     ("Minimum roll angle", "`min(roll)`", ORIENTATION_SOURCE),
     ("Maximum roll angle", "`max(roll)`", ORIENTATION_SOURCE),
     ("Peak absolute roll angle", "`max(abs(roll))`", ORIENTATION_SOURCE),
@@ -74,15 +79,18 @@ def metric_methodology_lines(
     lines = [
         "## Metric Formulas and Sources",
         "",
-        "Velocity formulas use cleaned X/Y samples. For pitch rate, Vicon pose samples with intervals "
-        "shorter than half the median positive pose interval are skipped. Pitch is interpolated "
-        "onto a uniform grid at the retained median interval, then differentiated with an "
-        "11-point cubic Savitzky-Golay filter (or the largest valid odd window for short series). "
-        "Maximum and linearly interpolated P99 use absolute rates in rad/s. "
+        "Velocity formulas use cleaned X/Y samples. For pitch and yaw rates, Vicon pose samples "
+        "with intervals shorter than half the median positive pose interval are skipped. Angles "
+        "are interpolated onto a uniform grid at the retained median interval, then differentiated "
+        "with an 11-point cubic Savitzky-Golay filter (or the largest valid odd window for short "
+        "series). Yaw is unwrapped and passed through a centered 200 ms median filter before the "
+        "derivative to reject impulsive pose noise. Pitch-rate statistics use rad/s and yaw-rate "
+        "statistics use degrees/s. Maximum and linearly interpolated P99 use absolute rates. "
         "Roll, pitch, and yaw are derived from the Vicon quaternion and reported in degrees. "
         "In angle formulas, t=0 means the first Vicon pose sample inside the evaluation window, "
         "not the start of the bag. Angle extrema use all in-window pose samples without "
-        "Savitzky-Golay smoothing or burst-sample rejection; those steps apply only to pitch rate. "
+        "Savitzky-Golay smoothing, median filtering, or burst-sample rejection; those steps apply "
+        "only to the corresponding rate calculations. "
         "For the Yaw selected CSV, max_absolute_yaw_deg is the largest absolute unwrapped yaw "
         "change from the first in-window pose, and yaw_range_deg is the maximum minus minimum "
         "unwrapped yaw in the window. Unwrapping removes jumps at the ±180-degree boundary.",
