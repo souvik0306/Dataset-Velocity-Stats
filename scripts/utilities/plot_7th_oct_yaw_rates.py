@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plot the yaw-rate metric inputs for 7 October AI flights 2 and 5."""
+"""Compare the yaw rates of 7 October AI flights 2 and 4."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import rosbag
+from scipy.ndimage import median_filter
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(WORKSPACE_ROOT))
@@ -31,7 +32,15 @@ from rosbag_motion_metrics import (  # noqa: E402
 )
 
 DATASET = "AI"
-FLIGHTS = (2, 5)
+FLIGHTS = (2, 4)
+WINDOW_DURATION_S = 20.0
+DEFAULT_SMOOTHING_MS = 150.0
+TICK_FONT_SIZE = 18
+LEGEND_FONT_SIZE = 16
+LABEL_FONT_SIZE = 18
+SUBPLOT_TITLE_FONT_SIZE = 20
+FIGURE_TITLE_FONT_SIZE = 18
+DATA_LINE_WIDTH = 4
 DEFAULT_OUTPUT = (
     WORKSPACE_ROOT
     / "results"
@@ -39,8 +48,27 @@ DEFAULT_OUTPUT = (
     / "20s"
     / DATASET
     / "plots"
-    / "yaw_rate_flights_2_and_5.png"
+    / "yaw_rate_flights_2_and_4_smoothed.png"
 )
+DEFAULT_ANGLE_OUTPUT = DEFAULT_OUTPUT.with_name(
+    "unwrapped_yaw_values_flights_2_and_4.png"
+)
+
+plt.rcParams.update({"font.size": TICK_FONT_SIZE})
+
+
+def smooth_for_display(
+    times_s: np.ndarray, values: np.ndarray, smoothing_ms: float
+) -> Tuple[np.ndarray, int]:
+    """Return a centered rolling median used only for the thick display trace."""
+    if len(times_s) < 2:
+        return values.copy(), 1
+
+    median_dt_s = float(np.median(np.diff(times_s)))
+    window_samples = max(1, int(round((smoothing_ms / 1000.0) / median_dt_s)))
+    if window_samples % 2 == 0:
+        window_samples += 1
+    return median_filter(values, size=window_samples, mode="nearest"), window_samples
 
 
 def load_yaw_series(flight_number: int) -> Dict[str, object]:
@@ -94,7 +122,8 @@ def load_yaw_series(flight_number: int) -> Dict[str, object]:
             for _, quaternion in retained
         ]
     )
-    unwrapped_yaw_deg = np.degrees(np.unwrap(wrapped_yaw_rad))
+    unwrapped_yaw_rad = np.unwrap(wrapped_yaw_rad)
+    unwrapped_yaw_deg = np.degrees(unwrapped_yaw_rad)
     relative_yaw_deg = unwrapped_yaw_deg - unwrapped_yaw_deg[0]
     time_from_window_start_s = (
         header_times_s - recording_start_s - window_start_s
@@ -118,9 +147,10 @@ def load_yaw_series(flight_number: int) -> Dict[str, object]:
     filtered_angle_header_times_s = np.array(
         [time_s for time_s, _ in filtered_angle_samples]
     )
-    filtered_yaw_deg = np.degrees(
-        np.array([yaw_rad for _, yaw_rad in filtered_angle_samples])
+    filtered_yaw_rad = np.array(
+        [yaw_rad for _, yaw_rad in filtered_angle_samples]
     )
+    filtered_yaw_deg = np.degrees(filtered_yaw_rad)
     filtered_relative_yaw_deg = filtered_yaw_deg - filtered_yaw_deg[0]
     filtered_angle_times_s = (
         filtered_angle_header_times_s - recording_start_s - window_start_s
@@ -132,8 +162,10 @@ def load_yaw_series(flight_number: int) -> Dict[str, object]:
         "window_start_s": window_start_s,
         "window_end_s": window_end_s,
         "angle_times_s": time_from_window_start_s,
+        "unwrapped_yaw_rad": unwrapped_yaw_rad,
         "relative_yaw_deg": relative_yaw_deg,
         "filtered_angle_times_s": filtered_angle_times_s,
+        "filtered_yaw_rad": filtered_yaw_rad,
         "filtered_relative_yaw_deg": filtered_relative_yaw_deg,
         "rate_times_s": rate_times_s,
         "signed_yaw_rate_deg_s": signed_yaw_rate_deg_s,
@@ -147,115 +179,232 @@ def load_yaw_series(flight_number: int) -> Dict[str, object]:
     }
 
 
-def make_plot(output_path: Path) -> Path:
-    results = {flight: load_yaw_series(flight) for flight in FLIGHTS}
-    colors = {2: "#1769c2", 5: "#7b2cbf"}
-    fig, axes = plt.subplots(2, 2, figsize=(19, 11), sharex="col")
+def plot_yaw_rate_subplot(
+    axis: plt.Axes,
+    result: Dict[str, object],
+    *,
+    color: str,
+    smoothing_ms: float,
+) -> Dict[str, float]:
+    """Draw one flight's yaw-rate comparison subplot and return its key values."""
+    rates = np.asarray(result["signed_yaw_rate_deg_s"], dtype=float)
+    rate_times = np.asarray(result["rate_times_s"], dtype=float)
+    displayed_rates, display_window_samples = smooth_for_display(
+        rate_times, rates, smoothing_ms
+    )
+    maximum_index = int(result["maximum_index"])
+    maximum_time = float(rate_times[maximum_index])
+    maximum_signed_rate = float(rates[maximum_index])
+    p99 = float(result["p99_absolute_yaw_rate_deg_s"])
+    maximum = float(result["maximum_absolute_yaw_rate_deg_s"])
+    flight_number = int(result["flight"])
+    maximum_label_alignment = (
+        "right" if maximum_time > 0.90 * WINDOW_DURATION_S else "center"
+    )
 
-    for row, flight_number in enumerate(FLIGHTS):
+    axis.plot(
+        rate_times,
+        rates,
+        color=color,
+        linewidth=1.2,
+        alpha=0.40,
+        label="Actual signed yaw rate used by metric",
+    )
+    axis.plot(
+        rate_times,
+        displayed_rates,
+        color=color,
+        linewidth=DATA_LINE_WIDTH,
+        label=f"Smoothed yaw rate ({smoothing_ms:g} ms centered median)",
+    )
+    axis.axhline(
+        p99,
+        color="#e69f00",
+        linewidth=2.2,
+        linestyle="--",
+        label=f"Actual ±P99 = {p99:.3f} deg/s",
+    )
+    axis.axhline(-p99, color="#e69f00", linewidth=2.2, linestyle="--")
+    axis.axhline(
+        maximum_signed_rate,
+        color="#d62728",
+        linewidth=3.2,
+        linestyle="--",
+        label=f"Actual |maximum| = {maximum:.3f} deg/s",
+    )
+    axis.axvline(
+        maximum_time,
+        color="#d62728",
+        linewidth=2.0,
+        linestyle=":",
+    )
+    axis.plot(
+        maximum_time,
+        maximum_signed_rate,
+        marker="o",
+        markersize=8,
+        color="#d62728",
+        zorder=5,
+    )
+    axis.set_title(
+        f"AI Flight {flight_number}  |  source window "
+        f"{float(result['window_start_s']):.2f}-{float(result['window_end_s']):.2f} s",
+        fontsize=SUBPLOT_TITLE_FONT_SIZE,
+        loc="left",
+    )
+    axis.set_xlim(0.0, WINDOW_DURATION_S)
+    axis.set_ylim(-1.10 * maximum, 1.10 * maximum)
+    axis.set_ylabel("Signed yaw rate (deg/s)", fontsize=LABEL_FONT_SIZE)
+    axis.grid(which="major", alpha=0.30)
+    axis.minorticks_on()
+    axis.grid(which="minor", alpha=0.12)
+    axis.tick_params(labelsize=TICK_FONT_SIZE)
+    axis.plot(
+        [maximum_time, maximum_time],
+        [0.0, -0.018],
+        transform=axis.get_xaxis_transform(),
+        color="#d62728",
+        linewidth=2,
+        clip_on=False,
+    )
+    axis.text(
+        maximum_time,
+        -0.03,
+        f"{maximum_time:.2f} s\nmax",
+        transform=axis.get_xaxis_transform(),
+        ha=maximum_label_alignment,
+        va="top",
+        color="#d62728",
+        fontsize=TICK_FONT_SIZE,
+        clip_on=False,
+    )
+    legend_location = (
+        "upper right" if maximum_time < 0.5 * WINDOW_DURATION_S else "upper left"
+    )
+    axis.legend(loc=legend_location, fontsize=LEGEND_FONT_SIZE)
+    return {
+        "p99": p99,
+        "maximum": maximum,
+        "maximum_time": maximum_time,
+        "display_window_samples": float(display_window_samples),
+    }
+
+
+def make_yaw_values_plot(
+    results: Dict[int, Dict[str, object]],
+    smoothing_ms: float,
+    output_path: Path,
+) -> Path:
+    """Plot retained yaw samples immediately after angle unwrapping."""
+    colors = {2: "#1769c2", 4: "#7b2cbf"}
+    fig, axes = plt.subplots(2, 1, figsize=(18, 11), sharex=True)
+
+    for axis, flight_number in zip(axes, FLIGHTS):
         result = results[flight_number]
+        angle_times_s = np.asarray(result["angle_times_s"], dtype=float)
+        yaw_rad = np.asarray(result["unwrapped_yaw_rad"], dtype=float)
+        displayed_yaw_rad, _ = smooth_for_display(
+            angle_times_s, yaw_rad, smoothing_ms
+        )
+        angle_min = float(yaw_rad.min())
+        angle_max = float(yaw_rad.max())
+        padding = max(0.03 * (angle_max - angle_min), 0.002)
         color = colors[flight_number]
-        angle_axis, rate_axis = axes[row]
 
-        angle_axis.plot(
-            result["angle_times_s"],
-            result["relative_yaw_deg"],
+        axis.plot(
+            angle_times_s,
+            yaw_rad,
             color=color,
-            linewidth=1.0,
-            alpha=0.35,
-            label="Raw unwrapped yaw",
+            linewidth=1.2,
+            alpha=0.40,
+            label="Actual yaw values after unwrapping",
         )
-        angle_axis.plot(
-            result["filtered_angle_times_s"],
-            result["filtered_relative_yaw_deg"],
+        axis.plot(
+            angle_times_s,
+            displayed_yaw_rad,
             color=color,
-            linewidth=2.2,
-            label=(
-                f"Filtered yaw ({result['median_window_samples']}-sample "
-                "centered median)"
-            ),
+            linewidth=DATA_LINE_WIDTH,
+            label=f"Smoothed unwrapped yaw ({smoothing_ms:g} ms centered median)",
         )
-        angle_axis.axhline(0.0, color="#555555", linewidth=1.0, alpha=0.6)
-        angle_axis.set_ylabel("Yaw excursion (deg)", fontsize=13)
-        angle_axis.set_title(
-            f"AI Flight {flight_number}: raw and filtered yaw angle",
-            fontsize=15,
+        axis.set_title(
+            f"AI Flight {flight_number}  |  source window "
+            f"{float(result['window_start_s']):.2f}-{float(result['window_end_s']):.2f} s",
+            fontsize=SUBPLOT_TITLE_FONT_SIZE,
             loc="left",
         )
-        angle_axis.legend(loc="upper left", fontsize=10)
+        axis.set_xlim(0.0, WINDOW_DURATION_S)
+        axis.set_ylim(angle_min - padding, angle_max + padding)
+        axis.set_ylabel("Unwrapped yaw angle (rad)", fontsize=LABEL_FONT_SIZE)
+        axis.grid(which="major", alpha=0.30)
+        axis.minorticks_on()
+        axis.grid(which="minor", alpha=0.12)
+        axis.tick_params(labelsize=TICK_FONT_SIZE)
+        axis.legend(loc="upper left", fontsize=LEGEND_FONT_SIZE)
 
-        rates = result["signed_yaw_rate_deg_s"]
-        rate_times = result["rate_times_s"]
-        maximum_index = result["maximum_index"]
-        maximum_time = float(rate_times[maximum_index])
-        maximum_signed_rate = float(rates[maximum_index])
-        p99 = float(result["p99_absolute_yaw_rate_deg_s"])
-        maximum = float(result["maximum_absolute_yaw_rate_deg_s"])
-
-        rate_axis.plot(
-            rate_times,
-            rates,
-            color=color,
-            linewidth=1.4,
-            label="Filtered signed yaw rate",
-        )
-        rate_axis.axhline(
-            p99,
-            color="#e69f00",
-            linewidth=1.8,
-            linestyle="--",
-            label=f"±P99 absolute rate = {p99:.1f} deg/s",
-        )
-        rate_axis.axhline(
-            -p99,
-            color="#e69f00",
-            linewidth=1.8,
-            linestyle="--",
-        )
-        rate_axis.scatter(
-            [maximum_time],
-            [maximum_signed_rate],
-            color="#d62728",
-            s=55,
-            zorder=5,
-            label=f"Maximum absolute rate = {maximum:.1f} deg/s",
-        )
-        rate_axis.axvline(
-            maximum_time, color="#d62728", linewidth=1.4, linestyle=":"
-        )
-        rate_axis.set_ylabel("Yaw rate (deg/s)", fontsize=13)
-        rate_axis.set_title(
-            f"AI Flight {flight_number}: exact samples used by metric",
-            fontsize=15,
-            loc="left",
-        )
-        rate_axis.legend(loc="upper right", fontsize=10)
-
-        for axis in (angle_axis, rate_axis):
-            axis.set_xlim(0.0, 20.0)
-            axis.grid(which="major", alpha=0.30)
-            axis.minorticks_on()
-            axis.grid(which="minor", alpha=0.12)
-            axis.tick_params(labelsize=11)
-
-        print(
-            f"AI flight {flight_number}: P99 absolute yaw rate={p99:.6f} deg/s, "
-            f"maximum={maximum:.6f} deg/s at {maximum_time:.6f} s, "
-            f"retained poses={result['retained_count']}, "
-            f"skipped poses={result['skipped_count']}, "
-            f"minimum interval={float(result['minimum_interval_s']):.9f} s, "
-            f"median window={result['median_window_samples']} samples"
-        )
-
-    axes[-1, 0].set_xlabel("Time from evaluation-window start (s)", fontsize=13)
-    axes[-1, 1].set_xlabel("Time from evaluation-window start (s)", fontsize=13)
+    axes[-1].set_xlabel(
+        "Time from evaluation-window start, derived from pose header timestamp (s)",
+        fontsize=LABEL_FONT_SIZE,
+    )
     fig.suptitle(
-        "7 October Yaw: AI Flights 2 and 5",
-        fontsize=20,
+        "7th October Yaw: Unwrapped Yaw Values",
+        fontsize=FIGURE_TITLE_FONT_SIZE,
         fontweight="bold",
     )
     fig.subplots_adjust(
-        top=0.91, bottom=0.08, left=0.07, right=0.98, hspace=0.30, wspace=0.18
+        top=0.91, bottom=0.09, left=0.10, right=0.98, hspace=0.22
+    )
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=180)
+    plt.close(fig)
+    print(f"Saved {output_path}")
+    return output_path
+
+
+def make_plot(
+    output_path: Path,
+    smoothing_ms: float = DEFAULT_SMOOTHING_MS,
+    angle_output_path: Path = DEFAULT_ANGLE_OUTPUT,
+) -> Path:
+    if smoothing_ms <= 0:
+        raise ValueError("Smoothing duration must be greater than zero")
+
+    results = {flight: load_yaw_series(flight) for flight in FLIGHTS}
+    make_yaw_values_plot(results, smoothing_ms, angle_output_path)
+    colors = {2: "#1769c2", 4: "#7b2cbf"}
+    fig, axes = plt.subplots(2, 1, figsize=(18, 11), sharex=True)
+
+    for axis, flight_number in zip(axes, FLIGHTS):
+        result = results[flight_number]
+        summary = plot_yaw_rate_subplot(
+            axis,
+            result,
+            color=colors[flight_number],
+            smoothing_ms=smoothing_ms,
+        )
+        print(
+            f"AI flight {flight_number}: P99 absolute yaw rate="
+            f"{summary['p99']:.6f} deg/s, maximum={summary['maximum']:.6f} "
+            f"deg/s at {summary['maximum_time']:.2f} s, "
+            f"retained poses={result['retained_count']}, "
+            f"skipped poses={result['skipped_count']}, "
+            f"minimum interval={float(result['minimum_interval_s']):.9f} s, "
+            f"metric median window={result['median_window_samples']} samples, "
+            f"display median={int(summary['display_window_samples'])} samples"
+        )
+
+    axes[-1].set_xlabel(
+        "Time from evaluation-window start, derived from pose header timestamp (s)",
+        fontsize=LABEL_FONT_SIZE,
+        labelpad=28,
+    )
+    fig.suptitle(
+        "7th October Yaw: Signed Yaw Rate",
+        fontsize=FIGURE_TITLE_FONT_SIZE,
+        fontweight="bold",
+    )
+    fig.subplots_adjust(
+        top=0.91, bottom=0.14, left=0.10, right=0.98, hspace=0.30
     )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -268,13 +417,29 @@ def make_plot(output_path: Path) -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--smoothing-ms",
+        type=float,
+        default=DEFAULT_SMOOTHING_MS,
+        help=f"Centered-median width used only for display (default: {DEFAULT_SMOOTHING_MS:g})",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=DEFAULT_OUTPUT,
         help=f"Output PNG path (default: {DEFAULT_OUTPUT})",
     )
+    parser.add_argument(
+        "--angle-output",
+        type=Path,
+        default=DEFAULT_ANGLE_OUTPUT,
+        help=f"Unwrapped-yaw plot path (default: {DEFAULT_ANGLE_OUTPUT})",
+    )
     args = parser.parse_args()
-    make_plot(args.output.expanduser().resolve())
+    make_plot(
+        args.output.expanduser().resolve(),
+        args.smoothing_ms,
+        args.angle_output.expanduser().resolve(),
+    )
 
 
 if __name__ == "__main__":
