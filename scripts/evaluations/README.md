@@ -16,6 +16,12 @@ validation, metrics, plots, and reports are shared by `evaluation_common.py`.
 | 2 October FB | `analyze_2nd_oct_fb.py` | 20 s; AI only |
 | 2 October Yaw | `analyze_2nd_oct_yaw.py` | 20 s; AI only |
 | 7 October Yaw | `analyze_7th_oct_yaw.py` | 20 s |
+| 14 October Low | `analyze_14th_oct_low.py` | 20 s |
+| 14 October Medium | `analyze_14th_oct_medium.py` | 20 s |
+| 14 October High | `analyze_14th_oct_high.py` | 20 s |
+| 15 October Low | `analyze_15th_oct_low.py` | 20 s |
+| 15 October Medium | `analyze_15th_oct_medium.py` | 20 s |
+| 15 October High | `analyze_15th_oct_high.py` | 20 s |
 | Yaw | `analyze_yaw.py` | 20 s |
 
 Use `--no-plots` for CSV-only output and `--help` for input/output path overrides.

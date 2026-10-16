@@ -39,6 +39,8 @@ from rosbag_motion_metrics import compute_metrics_for_time_window  # noqa: E402
 FLIGHTS = (1, 3)
 WINDOW_DURATION_S = 20.0
 DEFAULT_SMOOTHING_MS = 150.0
+PLOT_TITLE_PREFIX = "2nd October Hover Less RC"
+BAG_DIR = WORKSPACE_ROOT / "data" / DATA_FOLDER
 DEFAULT_OUTPUT = (
     WORKSPACE_ROOT
     / "results"
@@ -69,7 +71,7 @@ def smooth_for_display(
 
 def load_flight(flight_number: int) -> Dict[str, object]:
     """Run the standard metrics pipeline for one configured 20-second window."""
-    bag_path = WORKSPACE_ROOT / "data" / DATA_FOLDER / f"flight_{flight_number}.bag"
+    bag_path = BAG_DIR / f"flight_{flight_number}.bag"
     if not bag_path.is_file():
         raise FileNotFoundError(f"Missing flight bag: {bag_path}")
 
@@ -94,7 +96,7 @@ def make_angle_plot(
 ) -> Path:
     """Plot the unsmoothed, resampled pitch values supplied to the derivative."""
     fig, axes = plt.subplots(2, 1, figsize=(18, 11), sharex=True)
-    colors = {1: "#1769c2", 3: "#7b2cbf"}
+    colors = dict(zip(FLIGHTS, ("#1769c2", "#7b2cbf")))
 
     for axis, flight_number in zip(axes, FLIGHTS):
         result = results[flight_number]
@@ -145,7 +147,7 @@ def make_angle_plot(
         fontsize=LABEL_FONT_SIZE,
     )
     fig.suptitle(
-        "2nd October Hover Less RC: Pitch Values Used for Rate Calculation",
+        f"{PLOT_TITLE_PREFIX}: Pitch Values Used for Rate Calculation",
         fontsize=FIGURE_TITLE_FONT_SIZE,
         fontweight="bold",
     )
@@ -169,7 +171,7 @@ def make_plot(
     results = {flight_number: load_flight(flight_number) for flight_number in FLIGHTS}
     make_angle_plot(results, smoothing_ms, angle_output_path)
     fig, axes = plt.subplots(2, 1, figsize=(18, 11), sharex=True)
-    colors = {1: "#1769c2", 3: "#7b2cbf"}
+    colors = dict(zip(FLIGHTS, ("#1769c2", "#7b2cbf")))
 
     for axis, flight_number in zip(axes, FLIGHTS):
         result = results[flight_number]
@@ -202,7 +204,7 @@ def make_plot(
             color=colors[flight_number],
             linewidth=DATA_LINE_WIDTH,
             label=(
-                f"Smoothed absolute pitch rate "
+                f"Smoothed absolute pitch rate\n"
                 f"({smoothing_ms:g} ms centered median)"
             ),
         )
@@ -266,7 +268,12 @@ def make_plot(
             fontsize=TICK_FONT_SIZE,
             clip_on=False,
         )
-        axis.legend(loc="upper left", fontsize=LEGEND_FONT_SIZE)
+        axis.legend(
+            loc="upper left",
+            bbox_to_anchor=(1.01, 1.0),
+            borderaxespad=0.0,
+            fontsize=LEGEND_FONT_SIZE,
+        )
 
         print(
             f"AI Flight {flight_number}: actual P99={p99:.6f} rad/s, "
@@ -280,11 +287,11 @@ def make_plot(
         labelpad=28,
     )
     fig.suptitle(
-        "2nd October Hover Less RC: Absolute Pitch Rate",
+        f"{PLOT_TITLE_PREFIX}: Absolute Pitch Rate",
         fontsize=FIGURE_TITLE_FONT_SIZE,
         fontweight="bold",
     )
-    fig.subplots_adjust(top=0.91, bottom=0.14, left=0.10, right=0.98, hspace=0.30)
+    fig.subplots_adjust(top=0.91, bottom=0.14, left=0.10, right=0.72, hspace=0.30)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=180)
